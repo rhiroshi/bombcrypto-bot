@@ -308,9 +308,26 @@ def clickBtn(img,name=None, timeout=3, threshold = ct['default']):
             continue
 
         x,y,w,h = matches[0]
-        pyautogui.moveTo(x+w/2,y+h/2,1)
+        target_x = np.random.randint(x, x + w)
+        target_y = np.random.randint(y, y + h)
+        randomMoveMouseTo(target_x, target_y, 1)
         pyautogui.click()
         return True
+
+def randomMoveMouseTo(x, y, max_speed=1):
+    speed = np.random.random() * max_speed
+    effects = [
+        pyautogui.easeInQuad,
+        pyautogui.easeOutQuad,
+        pyautogui.easeInOutQuad,
+    ]
+    effect = np.random.choice(effects)
+    # Simulates mouse movement when you grab the mouse
+    current_position = pyautogui.position()
+    pyautogui.moveTo(current_position.x - np.random.randint(0, 15), current_position.y - np.random.randint(0, 12), 0.2)
+    pyautogui.moveTo(current_position.x - np.random.randint(0, 2), current_position.y - np.random.randint(0, 2), 0.2)
+    # Moves to target with a random effect
+    pyautogui.moveTo(x, y, speed, effect)
 
 def printSreen():
     with mss.mss() as sct:
@@ -357,7 +374,9 @@ def scroll():
 def clickButtons():
     buttons = positions(go_work_img, threshold=ct['go_to_work_btn'])
     for (x, y, w, h) in buttons:
-        pyautogui.moveTo(x+(w/2),y+(h/2),1)
+        target_x = np.random.randint(x, x + w)
+        target_y = np.random.randint(y, y + h)
+        randomMoveMouseTo(target_x, target_y)
         pyautogui.click()
         global hero_clicks
         hero_clicks = hero_clicks + 1
@@ -396,7 +415,9 @@ def clickGreenBarButtons():
     # se tiver botao com y maior que bar y-10 e menor que y+10
     for (x, y, w, h) in not_working_green_bars:
         # isWorking(y, buttons)
-        pyautogui.moveTo(x+offset+(w/2),y+(h/2),1)
+        target_x = np.random.randint(x, x + w) + offset
+        target_y = np.random.randint(y, y + h)
+        randomMoveMouseTo(target_x, target_y)
         pyautogui.click()
         global hero_clicks
         hero_clicks = hero_clicks + 1
@@ -420,7 +441,9 @@ def clickFullBarButtons():
         logger('Clicking in %d heroes.' % len(not_working_full_bars))
 
     for (x, y, w, h) in not_working_full_bars:
-        pyautogui.moveTo(x+offset+(w/2),y+(h/2),1)
+        target_x = np.random.randint(x, x + w) + offset
+        target_y = np.random.randint(y, y + h)
+        randomMoveMouseTo(target_x, target_y)
         pyautogui.click()
         global hero_clicks
         hero_clicks = hero_clicks + 1
@@ -481,7 +504,7 @@ def login():
     if not clickBtn(select_metamask_no_hover_img, name='selectMetamaskBtn'):
         if clickBtn(select_wallet_hover_img, name='selectMetamaskHoverBtn', threshold = ct['select_wallet_buttons'] ):
             pass
-            # o ideal era que ele alternasse entre checar cada um dos 2 por um tempo 
+            # o ideal era que ele alternasse entre checar cada um dos 2 por um tempo
             # print('sleep in case there is no metamask text removed')
             # time.sleep(20)
     else:
