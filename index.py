@@ -11,6 +11,8 @@ import time
 import sys
 import yaml
 import pygetwindow
+import discord
+import pytesseract
 
 # Load config file.
 stream = open("config.yaml", 'r')
@@ -19,6 +21,23 @@ ct = c['threshold']
 ch = c['home']
 pause = c['time_intervals']['interval_between_moviments']
 pyautogui.PAUSE = pause
+
+def getCurrentBcoinAmmount():
+    if clickBtn(images['stash']):
+        time.sleep(3)
+        pic = pyautogui.screenshot
+
+        clickBtn(images['x'])
+    return pytesseract.image_to_string(pic)
+
+
+def sendStashToDiscord():
+    if c['discord_webhook_url'] == '':
+        return False
+
+    msg = 'Bcoins: ' + ' - '.join(map(lambda w: w['bcoin_ammount'], windows))
+    webhook = discord.Webhook.from_url(c['discord_webhook_url'], adapter=discord.RequestsWebhookAdapter())
+    webhook.send(msg)
 
 def addRandomness(n, randomn_factor_size=None):
     """Returns n with randomness
@@ -412,30 +431,15 @@ def main():
     global last_log_is_progress
     hero_clicks = 0
     login_attempts = 0
+    last_discord_update = 0
     last_log_is_progress = False
 
     global images
     images = load_images()
 
-    if ch['enable']:
-        global home_heroes
-        home_heroes = loadHeroesToSendHome()
-    else:
-        print('>>---> Home feature not enabled')
-    print('\n')
-
-    print(cat)
     time.sleep(7)
     t = c['time_intervals']
 
-    last = {
-    "login" : 0,
-    "heroes" : 0,
-    "new_map" : 0,
-    "check_for_captcha" : 0,
-    "refresh_heroes" : 0
-    }
-    # =========
     windows = []
 
     #  Aqui ele percorre as janelas que estiver escrito bombcrypto
@@ -449,7 +453,8 @@ def main():
             "heroes": 0,
             "new_map": 0,
             "check_for_captcha": 0,
-            "refresh_heroes": 0
+            "refresh_heroes": 0,
+            "stash_bcoin": 0
         })
 
     if len(windows) >= 1:
@@ -458,38 +463,47 @@ def main():
         raise Exception("No window with the name bombcrypto were found!")
 
     while True:
+        update_bcoin_ammount = False
+        if now - last_discord_update > t['discord_update']:
+            last_discord_update = now
+            update_bcoin_ammount = True
+
         for currentWindow in windows:
             currentWindow["window"].activate()
             if currentWindow["window"].isMaximized == False:
                 currentWindow["window"].maximize()
                 now = time.time()
 
-            if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
-                last["check_for_captcha"] = now
+            if now - currentWindow["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
+                currentWindow["check_for_captcha"] = now
 
-            if now - last["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
-                last["heroes"] = now
+            if now - currentWindow["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
+                currentWindow["heroes"] = now
                 refreshHeroes()
 
-            if now - last["login"] > addRandomness(t['check_for_login'] * 60):
+            if now - currentWindow["login"] > addRandomness(t['check_for_login'] * 60):
                 sys.stdout.flush()
-                last["login"] = now
+                currentWindow["login"] = now
                 login()
 
-            if now - last["new_map"] > t['check_for_new_map_button']:
-                last["new_map"] = now
+            if now - currentWindow["new_map"] > t['check_for_new_map_button']:
+                currentWindow["new_map"] = now
 
             if clickBtn(images['new-map']):
                 loggerMapClicked()
 
-
-            if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
-                last["refresh_heroes"] = now
+            if now - currentWindow["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
+                currentWindow["refresh_heroes"] = now
                 refreshHeroesPositions()
 
-            #clickBtn(teasureHunt)
+            if update_bcoin_ammount:
+                currentWindow["bcoin_ammount"] = getCurrentBcoinAmmount()
+
             logger(None, progress_indicator=True)
             sys.stdout.flush()
+
+        if update_bcoin_ammount:
+            sendStashToDiscord()
 
         time.sleep(1)
 
