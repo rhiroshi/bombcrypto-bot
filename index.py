@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-    
+# -*- coding: utf-8 -*-
 from src.logger import logger, loggerMapClicked
 from cv2 import cv2
 from os import listdir
@@ -10,6 +10,7 @@ import pyautogui
 import time
 import sys
 import yaml
+import pygetwindow
 
 # Load config file.
 stream = open("config.yaml", 'r')
@@ -18,42 +19,6 @@ ct = c['threshold']
 ch = c['home']
 pause = c['time_intervals']['interval_between_moviments']
 pyautogui.PAUSE = pause
-
-cat = """
-                                                _
-                                                \`*-.
-                                                 )  _`-.
-                                                .  : `. .
-                                                : _   '  \\
-                                                ; *` _.   `*-._
-                                                `-.-'          `-.
-                                                  ;       `       `.
-                                                  :.       .        \\
-                                                  . \  .   :   .-'   .
-                                                  '  `+.;  ;  '      :
-                                                  :  '  |    ;       ;-.
-                                                  ; '   : :`-:     _.`* ;
-                                               .*' /  .*' ; .*`- +'  `*'
-                                               `*-*   `*-*  `*-*'
-=========================================================================
-========== 💰 Have I helped you in any way? All I ask is a tip! 🧾 ======
-========== ✨ Faça sua boa ação de hoje, manda aquela gorjeta! 😊 =======
-=========================================================================
-======================== vvv BCOIN BUSD BNB vvv =========================
-============== 0xbd06182D8360FB7AC1B05e871e56c76372510dDf ===============
-=========================================================================
-===== https://www.paypal.com/donate?hosted_button_id=JVYSC6ZYCNQQQ ======
-=========================================================================
-
->>---> Press ctrl + c to kill the bot.
-
->>---> Some configs can be found in the config.yaml file."""
-
-
-
-
-
-
 
 def addRandomness(n, randomn_factor_size=None):
     """Returns n with randomness
@@ -117,10 +82,6 @@ def loadHeroesToSendHome():
     print('>>---> %d heroes that should be sent home loaded' % len(heroes))
     return heroes
 
-
-
-
-
 def show(rectangles, img = None):
     """ Show an popup with rectangles showing the rectangles[(x, y, w, h),...]
         over img or a printSreen if no img provided. Useful for debugging"""
@@ -136,10 +97,6 @@ def show(rectangles, img = None):
     # cv2.rectangle(img, (result[0], result[1]), (result[0] + result[2], result[1] + result[3]), (255,50,255), 2)
     cv2.imshow('img',img)
     cv2.waitKey(0)
-
-
-
-
 
 def clickBtn(img, timeout=3, threshold = ct['default']):
     """Search for img in the scree, if found moves the cursor over it and clicks.
@@ -341,7 +298,7 @@ def login():
         logger('🎉 Connect wallet button detected, logging in!')
         login_attempts = login_attempts + 1
         #TODO mto ele da erro e poco o botao n abre
-        # time.sleep(10)
+        time.sleep(5)
 
     if clickBtn(images['select-wallet-2'], timeout=8):
         # sometimes the sign popup appears imediately
@@ -357,7 +314,7 @@ def login():
     if not clickBtn(images['select-wallet-1-no-hover'], ):
         if clickBtn(images['select-wallet-1-hover'], threshold = ct['select_wallet_buttons'] ):
             pass
-            # o ideal era que ele alternasse entre checar cada um dos 2 por um tempo 
+            # o ideal era que ele alternasse entre checar cada um dos 2 por um tempo
             # print('sleep in case there is no metamask text removed')
             # time.sleep(20)
     else:
@@ -415,10 +372,6 @@ def sendHeroesHome():
         else:
             print('hero already home, or home full(no dark home button)')
 
-
-
-
-
 def refreshHeroes():
     logger('🏢 Search for heroes to work')
 
@@ -450,7 +403,6 @@ def refreshHeroes():
         time.sleep(2)
     logger('💪 {} heroes sent to work'.format(hero_clicks))
     goToGame()
-
 
 def main():
     """Main execution setup and loop"""
@@ -484,46 +436,64 @@ def main():
     "refresh_heroes" : 0
     }
     # =========
+    windows = []
+
+    #  Aqui ele percorre as janelas que estiver escrito bombcrypto
+    for window in pygetwindow.getWindowsWithTitle('bombcrypto'):
+        if (window.title.count('bombcrypto-bot') >= 1):
+            continue
+
+        windows.append({
+            "window": window,
+            "login": 0,
+            "heroes": 0,
+            "new_map": 0,
+            "check_for_captcha": 0,
+            "refresh_heroes": 0
+        })
+
+    if len(windows) >= 1:
+        print('>>---> %d windows with the name bombcrypto were found' % len(windows))
+    else
+        raise Exception("No window with the name bombcrypto were found!")
 
     while True:
-        now = time.time()
+        for currentWindow in windows:
+            currentWindow["window"].activate()
+            if currentWindow["window"].isMaximized == False:
+                currentWindow["window"].maximize()
+                now = time.time()
 
-        if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
-            last["check_for_captcha"] = now
+            if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
+                last["check_for_captcha"] = now
 
-        if now - last["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
-            last["heroes"] = now
-            refreshHeroes()
+            if now - last["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
+                last["heroes"] = now
+                refreshHeroes()
 
-        if now - last["login"] > addRandomness(t['check_for_login'] * 60):
-            sys.stdout.flush()
-            last["login"] = now
-            login()
+            if now - last["login"] > addRandomness(t['check_for_login'] * 60):
+                sys.stdout.flush()
+                last["login"] = now
+                login()
 
-        if now - last["new_map"] > t['check_for_new_map_button']:
-            last["new_map"] = now
+            if now - last["new_map"] > t['check_for_new_map_button']:
+                last["new_map"] = now
 
             if clickBtn(images['new-map']):
                 loggerMapClicked()
 
 
-        if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
-            last["refresh_heroes"] = now
-            refreshHeroesPositions()
+            if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
+                last["refresh_heroes"] = now
+                refreshHeroesPositions()
 
-        #clickBtn(teasureHunt)
-        logger(None, progress_indicator=True)
-
-        sys.stdout.flush()
+            #clickBtn(teasureHunt)
+            logger(None, progress_indicator=True)
+            sys.stdout.flush()
 
         time.sleep(1)
 
-
-
 if __name__ == '__main__':
-
-
-
     main()
 
 
@@ -532,5 +502,3 @@ if __name__ == '__main__':
 
 # colocar o botao em pt
 # soh resetar posiçoes se n tiver clickado em newmap em x segundos
-
-
